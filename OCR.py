@@ -1,8 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QTextEdit, QFileDialog, QMessageBox
-from PIL import Image
 import pytesseract
-from pdf2image import convert_from_path
 import cv2
 import numpy as np
 from docx import Document
@@ -28,7 +26,7 @@ class OCRApp(QWidget):
         self.layout.addWidget(self.text_box)
 
         # Create open button for selecting files
-        self.open_button = QPushButton("Open Image/PDF", self)
+        self.open_button = QPushButton("Open Images", self)
         self.open_button.clicked.connect(self.open_file)
         self.layout.addWidget(self.open_button)
 
@@ -41,27 +39,23 @@ class OCRApp(QWidget):
         self.setLayout(self.layout)
 
     def open_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "Images (*.png *.xpm *.jpg *.jpeg *.bmp *.tiff *.pdf)")
-        if file_path:
-            if file_path.endswith('.pdf'):
-                self.extract_text_from_pdf(file_path)
-            else:
-                self.extract_text_from_image(file_path)
+        # Open multiple image files
+        file_paths, _ = QFileDialog.getOpenFileNames(self, "Open Files", "", "Images (*.png *.xpm *.jpg *.jpeg *.bmp *.tiff)")
+        if file_paths:
+            extracted_text = ""
+            page_num = 1
 
-    def extract_text_from_image(self, file_path):
+            for file_path in file_paths:
+                extracted_text += self.extract_text_from_image(file_path, page_num)
+                page_num += 1
+
+            self.text_box.setPlainText(extracted_text)
+
+    def extract_text_from_image(self, file_path, page_num):
         # Preprocess the image for better OCR results
         img = preprocess_image(file_path)
         text = pytesseract.image_to_string(img)
-        self.text_box.setPlainText(text)
-
-    def extract_text_from_pdf(self, file_path):
-        # Convert PDF pages to images and extract text
-        images = convert_from_path(file_path)
-        extracted_text = ""
-        for img in images:
-            text = pytesseract.image_to_string(img)
-            extracted_text += text + "\n"
-        self.text_box.setPlainText(extracted_text)
+        return f"===<page {page_num}>===\n{text}\n"
 
     def save_to_word(self):
         text = self.text_box.toPlainText().strip()
